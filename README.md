@@ -1,2 +1,2 @@
 # lockAPP
-Hi! Yiti was here
+Yiti was here
