@@ -1,19 +1,13 @@
 package app.amazing.yiti.jeff.myapplication;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.content.Intent;
+import android.content.*;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
-public class Week extends Logic implements View.OnClickListener{
-
-
-
+public class Week extends AppCompatActivity implements View.OnClickListener{
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_week);
@@ -38,21 +32,21 @@ public class Week extends Logic implements View.OnClickListener{
 
         protected void onResume(){// sets value of current limits
             super.onResume();
-
+            SharedPreferences settingSharedPreference = getSharedPreferences("setting", Context.MODE_PRIVATE);
             TextView mon =  findViewById(R.id.monCur);
-            mon.setText(Logic.getPlaceholder(0));
+            mon.setText(settingSharedPreference.getString("place0","0 hours: 0 minutes"));
             TextView tue =  findViewById(R.id.tueCur);
-            tue.setText(Logic.getPlaceholder(1));
+            tue.setText(settingSharedPreference.getString("place1","0 hours: 0 minutes"));
             TextView wed =  findViewById(R.id.wedCur);
-            wed.setText(Logic.getPlaceholder(2));
+            wed.setText(settingSharedPreference.getString("place2","0 hours: 0 minutes"));
             TextView thur =  findViewById(R.id.thurCur);
-            thur.setText(Logic.getPlaceholder(3));
+            thur.setText(settingSharedPreference.getString("place3","0 hours: 0 minutes"));
             TextView fri =  findViewById(R.id.friCur);
-            fri.setText(Logic.getPlaceholder(4));
+            fri.setText(settingSharedPreference.getString("place4","0 hours: 0 minutes"));
             TextView sat =  findViewById(R.id.satCur);
-            sat.setText(Logic.getPlaceholder(5));
+            sat.setText(settingSharedPreference.getString("place5","0 hours: 0 minutes"));
             TextView sun =  findViewById(R.id.sunCur);
-            sun.setText(Logic.getPlaceholder(6));
+            sun.setText(settingSharedPreference.getString("place6","0 hours: 0 minutes"));
         }
 
     public void onClick(View v) {// go to time input xml with right key passed
@@ -64,7 +58,8 @@ public class Week extends Logic implements View.OnClickListener{
         ad.setPositiveButton("Enter", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface arg0, int arg1) {
-                if(et.getText().toString().equals(getPassword())){
+                SharedPreferences settingSharedPreference = getSharedPreferences("setting",Context.MODE_PRIVATE);
+                if(et.getText().toString().equals(settingSharedPreference.getString("pass",""))){
 
                     Intent sender = new Intent(Week.this,Time_Input.class);
                     switch (a.getId()) {
@@ -99,6 +94,5 @@ public class Week extends Logic implements View.OnClickListener{
             }
         });
         ad.create().show();
-
     }
 }

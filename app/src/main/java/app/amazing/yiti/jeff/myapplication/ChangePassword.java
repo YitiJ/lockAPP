@@ -1,17 +1,18 @@
 package app.amazing.yiti.jeff.myapplication;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import java.text.DateFormat;
 import java.util.Date;
 
-public class ChangePassword extends Logic {
+public class ChangePassword extends AppCompatActivity {
 
     private TextView newPass;
     @Override
@@ -38,22 +39,15 @@ public class ChangePassword extends Logic {
         findViewById(R.id.setNewPass).setOnClickListener(new View.OnClickListener() {// button listener
             @Override
             public void onClick(View v) {
-
+                SharedPreferences settingSharedPreference = getSharedPreferences("setting", Context.MODE_PRIVATE);
                 newPass = findViewById(R.id.newPass); // sets password when button is pressed
-                Logic.setPassword(newPass.getText().toString());
-
+                settingSharedPreference.edit().putString("pass",newPass.getText().toString()).apply();
                 String text = DateFormat.getDateTimeInstance().format(new Date())+" - Password Changed \n";
-                setLogText(  getLogText() + text); // appended change to log
 
-                savesSettings();
-                savesPassword();
+                settingSharedPreference.edit().putString("log",settingSharedPreference.getString("log","")+text).apply();
                 Toast.makeText(getBaseContext(),"Password set!",Toast.LENGTH_SHORT).show();
                 ChangePassword.super.onBackPressed();
             }
         });
-
-    }
-    public void onBackPressed() { // overrides back button
-        if (!Logic.getPassword().equals("")) super.onBackPressed();
     }
 }

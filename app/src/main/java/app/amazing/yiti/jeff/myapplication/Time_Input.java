@@ -1,10 +1,14 @@
 package app.amazing.yiti.jeff.myapplication;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -12,7 +16,7 @@ import android.widget.Toast;
 import java.text.DateFormat;
 import java.util.Date;
 
-public class Time_Input extends Logic {
+public class Time_Input extends AppCompatActivity {
 
     private EditText hour;
     private EditText minute;
@@ -53,7 +57,8 @@ public class Time_Input extends Logic {
         findViewById(R.id.setId).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                SharedPreferences settingSharedPreference = getSharedPreferences("setting", Context.MODE_PRIVATE);
+                SharedPreferences timerSharedPreference = getSharedPreferences(BackgroundService.DOMAIN,Context.MODE_PRIVATE);
                 AlertDialog.Builder er = new AlertDialog.Builder(Time_Input.this);
                 er.setMessage("Please enter numbers that are within range.").setCancelable(true);
 
@@ -74,29 +79,28 @@ public class Time_Input extends Logic {
                 else if(m>60 || m<0)
                     Toast.makeText(getBaseContext(), "Incompatible input : Minutes should be between 0 and 60", Toast.LENGTH_SHORT).show();
 
-                else if(sum<Logic.getTimeOnPhone())
+                else if(sum<timerSharedPreference.getLong(BackgroundService.STORED_TIME_KEY,0)/60)
                     Toast.makeText(getBaseContext(), "Incompatible input : Time limit should be greater than time already spent on the phone", Toast.LENGTH_SHORT).show();
 
                 else {
                     int mode = getIntent().getIntExtra("day",0);
-
-                    String TAG ="asd";
-                    Log.d(TAG, mode+"");
-                    Logic.setMaxTime(mode,sum);// in minutes
-                    setDayLimit();
-                    Logic.setPlaceholder(mode,h+" hours : "+m+" minutes");// for setting the value of current limits
+                    String newText = getNewLog(mode,settingSharedPreference.getString("log",""));//updates log
+                    settingSharedPreference.edit().putString("log",newText).apply();
+                    settingSharedPreference.edit().putString("place"+mode,h+" hours : "+m+" minutes").apply();// for setting the value of current limits
+                    settingSharedPreference.edit().putInt("limit"+mode,sum).apply();
                     Toast.makeText(getBaseContext(), "Set New Limit!", Toast.LENGTH_SHORT).show();
-                    appendLog(mode);//updates log
-                    savesSettings();//saves data
+
+                    Intent in = new Intent();
+                    in.putExtra("mode", mode);
+                    in.putExtra("limit", sum);
+                    in.setAction("LIMIT");
+                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(in);
                     Time_Input.super.onBackPressed();
-
                 }
-
             }
         });
-
     }
-    public static void appendLog(int i){// im sorry yiti this is so ugly
+    public String getNewLog(int i,String oldText){// im sorry yiti this is so ugly
         String text = "";
         switch (i){
             case 0:
@@ -105,23 +109,23 @@ public class Time_Input extends Logic {
             case 1:
                 text = DateFormat.getDateTimeInstance().format(new Date())+" - Tuesday Limit Changed \n";
                 break;
-            case 3:
+            case 2:
                 text = DateFormat.getDateTimeInstance().format(new Date())+" - Wednesday Limit Changed \n";
                 break;
-            case 4:
+            case 3:
                 text = DateFormat.getDateTimeInstance().format(new Date())+" - Thursday Limit Changed \n";
                 break;
-            case 5:
+            case 4:
                 text = DateFormat.getDateTimeInstance().format(new Date())+" - Friday Limit Changed \n";
                 break;
-            case 6:
+            case 5:
                 text = DateFormat.getDateTimeInstance().format(new Date())+" - Saturday Limit Changed \n";
                 break;
-            case 7:
+            case 6:
                 text = DateFormat.getDateTimeInstance().format(new Date())+" - Sunday Limit Changed \n";
                 break;
         }
-        setLogText( getLogText() + text); // appended change to log
+        return oldText+text;
     }
 
 }
