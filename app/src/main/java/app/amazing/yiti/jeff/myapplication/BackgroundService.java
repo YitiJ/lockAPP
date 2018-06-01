@@ -1,40 +1,42 @@
 package app.amazing.yiti.jeff.myapplication;
         import android.app.Service;
-        import android.content.Context;
-        import android.content.Intent;
-        import android.content.SharedPreferences;
-        import android.os.Binder;
-        import android.os.Build;
-        import android.os.IBinder;
-        import android.os.PowerManager;
+        import android.content.*;
+        import android.os.*;
         import android.support.v4.content.LocalBroadcastManager;
         import android.util.Log;
         import android.widget.Toast;
         import android.os.Handler;
+
+        import java.text.DateFormat;
         import java.util.Calendar;
+        import java.util.Date;
 
 public class BackgroundService extends Service {
+    private boolean isDestroy;
     private long startTime;
     private long storedTime;
-    private boolean isStop = false;
+    private long totalTime;
+    private boolean isStop = true;
+    private boolean isWarned = false;
     private long timeLimit;
     private int curDay;
-    private long maxTime[] = new long[7];
     private SharedPreferences thisSharedPref;
     public static final String DOMAIN = "com.amazing.yiti.jeff.myApplication.BackgroundService";
     public static final String STORED_TIME_KEY = "STORED_TIME";
-    public static final String TIME_LIMIT_KEY = "TIME_LIMIT";
     public static final String STOP_KEY = "STOP_SIGNAL";
     public static final String CUR_DAY_KEY = "CUR_DAY";
+    public static final String WARNED_KEY = "IS_WARNED";
     private MyBinder binder = new MyBinder();
-
-    public void setMaxTime(){
-        maxTime = Logic.getMaxTimeArray();
-    }
-
+    private BroadcastReceiver limitReciever = new BroadcastReceiver(){
+        @Override
+        public void onReceive(Context context, Intent intent){
+            int mode = intent.getIntExtra("mode",-1);
+            if(mode == curDay) setTimeLimit(intent.getIntExtra("limit",0));
+        }
+    };
     public void sendTime(long totalTime){
         Log.e("SendTime", Long.toString(totalTime));
-        Log.e("limit", Long.toString(maxTime[curDay]));
+        Log.e("limit", Long.toString(timeLimit));
         Intent in = new Intent();
         in.putExtra("TIME", totalTime);
         in.setAction("TIMER");
@@ -49,7 +51,7 @@ public class BackgroundService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.e("Bind", "Binded");
-        timeLimit = maxTime[curDay];
+        LocalBroadcastManager.getInstance(BackgroundService.this).registerReceiver(limitReciever, new IntentFilter("LIMIT"));
         return binder;
     }
     @Override
@@ -57,33 +59,49 @@ public class BackgroundService extends Service {
         Log.v("Bind", "Rebind");
         super.onRebind(intent);
     }
-
     @Override
     public boolean onUnbind(Intent intent) {
         Log.v("Bind", "Unbind");
         super.onUnbind(intent);
         return true;
     }
+    public int getLimit(int day){
+        SharedPreferences settingSharedPreference = getSharedPreferences("setting",Context.MODE_PRIVATE);
+        return settingSharedPreference.getInt("limit"+day,0);
+    }
     @Override
     public void onCreate(){
         Log.e("thread","create()");
-        thisSharedPref = BackgroundService.this.getSharedPreferences(DOMAIN, Context.MODE_PRIVATE);
-        isStop = thisSharedPref.getBoolean(STOP_KEY,false);
+        thisSharedPref = getSharedPreferences(DOMAIN, Context.MODE_PRIVATE);
+        isStop = thisSharedPref.getBoolean(STOP_KEY,true);
+        isWarned = thisSharedPref.getBoolean(WARNED_KEY,false);
         storedTime = thisSharedPref.getLong(STORED_TIME_KEY,-1);
         curDay = thisSharedPref.getInt(CUR_DAY_KEY,0);
-        timeLimit = maxTime[curDay];
+        setTimeLimit(getLimit(curDay));
         Log.e("CurrentDay", Long.toString(curDay));
+        isDestroy = true;
+        runCheckDay();
         runTimer();
+    }
+    public void runCheckDay(){
+        Thread thread = new Thread(new Runnable(){
+            @Override
+            public void run(){
+               while(isDestroy) {
+                   updateCurDay();
+               }
+            }
+        });
+        thread.start();
     }
     public void runTimer(){
         Thread thread = new Thread(new Runnable(){
             @Override
             public void run(){
                 resetStartTimer();
-                long totalTime = 0;
+                totalTime = 0;
+                setTimeLimit(getLimit(curDay));
                 while(!isStop){
-                    updateCurDay();
-                    setTimeLimit(maxTime[curDay]);
                     try {
                         if(checkDisplay()){
                             totalTime = storedTime + getLapseTime();
@@ -95,11 +113,13 @@ public class BackgroundService extends Service {
                         }
                         thisSharedPref.edit().putLong(STORED_TIME_KEY,totalTime).apply();
                         checkTimeLimit(totalTime);
+                        if(timeLimit == 0) setStop(true);
                         Thread.sleep(1000);
                     }catch(InterruptedException e){
                         e.printStackTrace();
                     }
                 }
+                storedTime = totalTime;
             }
         });
         thread.start();
@@ -132,10 +152,47 @@ public class BackgroundService extends Service {
         if(newDay != curDay){
             Log.e("curDay",Integer.toString(curDay));
             Log.e("newDay",Integer.toString(newDay));
+            SharedPreferences settingSharedPreference = getSharedPreferences("setting",Context.MODE_PRIVATE);
+            String newText = settingSharedPreference.getString("log","");
+            switch (curDay){
+                case 0:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Monday ";
+                    break;
+                case 1:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Tuesday ";
+                    break;
+                case 2:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Wednesday ";
+                    break;
+                case 3:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Thursday ";
+                    break;
+                case 4:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Friday ";
+                    break;
+                case 5:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Saturday ";
+                    break;
+                case 6:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Sunday ";
+                    break;
+            }
+            Log.e("CurTimeChange", totalTime+"");
+            newText += "Remain Time: " + (timeLimit -totalTime/60 - 1) + "minutes\n";
+            settingSharedPreference.edit().putString("log",newText).apply();
             resetTimer();
             curDay = newDay;
+            setTimeLimit(getLimit(curDay));
             thisSharedPref.edit().putInt(CUR_DAY_KEY,curDay).apply();
+            isWarned = false;
+            thisSharedPref.edit().putBoolean(WARNED_KEY,isWarned).apply();
         }
+    }
+    public long getCurLimit(){
+        return timeLimit;
+    }
+    public long getTimeOnPhone(){
+        return (thisSharedPref.getLong(STORED_TIME_KEY, 0))/60;
     }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
@@ -145,6 +202,7 @@ public class BackgroundService extends Service {
     public void onDestroy(){
         Log.e("service","Destroy!!");
         setStop(true);
+       isDestroy = false;
     }
     public boolean checkDisplay(){
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
@@ -167,12 +225,12 @@ public class BackgroundService extends Service {
         thisSharedPref.edit().putBoolean(STOP_KEY,isStop).apply();
     }
     public void setTimeLimit(long limit){
+        Log.e("setTimeLimit",""+limit);
         if(limit>timeLimit){
             timeLimit = limit;
             setStop(false);
         }
         timeLimit = limit;
-        thisSharedPref.edit().putLong(TIME_LIMIT_KEY,timeLimit).apply();
     }
     public void checkTimeLimit(long current){
         if(timeLimit > 0 && current/60 >= timeLimit){
@@ -180,15 +238,18 @@ public class BackgroundService extends Service {
         }
     }
     public void timeLimitReached(){
-        setStop(true);
-        Handler h = new Handler(getApplicationContext().getMainLooper());
-        // Although you need to pass an appropriate context
-        h.post(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(getApplicationContext(),"Your time limit is reached!!",Toast.LENGTH_SHORT).show();
-            }
-        });
+        if(!isWarned) {
+            isWarned = true;
+            thisSharedPref.edit().putBoolean(WARNED_KEY,isWarned).apply();
+            Handler h = new Handler(getApplicationContext().getMainLooper());
+            // Although you need to pass an appropriate context
+            h.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), "Your time limit is reached!!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
     class MyBinder extends Binder{
         BackgroundService getService() {

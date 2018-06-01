@@ -18,13 +18,6 @@
             </intent-filter>
             />
         </activity>
-        <activity android:name=".days.Monday" />
-        <activity android:name=".days.Tuesday" />
-        <activity android:name=".days.Wednesday" />
-        <activity android:name=".days.Thursday" />
-        <activity android:name=".days.Friday" />
-        <activity android:name=".days.Saturday" />
-        <activity android:name=".days.Sunday" />
         <activity android:name=".Time_Input" />
         <activity android:name=".ChangePassword" />
 
@@ -33,7 +26,7 @@
             android:enabled="true"
             android:exported="true" />
 
-        <activity android:name=".log"></activity>
+        <activity android:name=".log" />
     </application>
 
 </manifest>

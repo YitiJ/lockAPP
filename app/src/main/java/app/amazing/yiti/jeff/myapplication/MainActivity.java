@@ -1,28 +1,23 @@
 package app.amazing.yiti.jeff.myapplication;
 
+import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
+import android.content.*;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
-public class MainActivity extends Logic {
+public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private boolean isBinded = false;
     private Intent serviceIntent;
     private BackgroundService boundS;
+    private SharedPreferences settingSharedPreference;
+
     private ServiceConnection sConnection = new ServiceConnection(){
         @Override
         public void onServiceDisconnected(ComponentName name){
@@ -35,43 +30,45 @@ public class MainActivity extends Logic {
             BackgroundService.MyBinder myBinder = (BackgroundService.MyBinder) service;
             boundS = myBinder.getService();
             isBinded = true;
-            boundS.setMaxTime();
-            Logic.setDayLimit();
-            setProgressBar();
+            setProgressBar(boundS.getTimeOnPhone(),boundS.getCurLimit());
         }
     };
     private BroadcastReceiver curTimeReciever = new BroadcastReceiver(){
         @Override
         public void onReceive(Context context, Intent intent){
             long time = intent.getLongExtra("TIME",0);
-            Logic.setTimeOnPhone(time/60);
-            Logic.setDayLimit();
-            setProgressBar();
+            if(boundS!=null) {
+                setProgressBar(time,boundS.getCurLimit());
+            }
         }
     };
-
     //Methods
-    private void setProgressBar(){
+    private void setProgressBar(Long timeOnPhone,long limit){
         TextView percent = findViewById(R.id.percent);
         progressBar = findViewById(R.id.progressBar);
         TextView h;
         TextView m;
-
-        if (getDayLimit() != 0) { // checks if timer exists
-            if(getTimeOnPhone()<0) return; // stops updating if the limit is reached
-            double newPerc = 100 - (Logic.getTimeOnPhone() / (double)getDayLimit() * 100);
+        TextView usedTime;
+        h = findViewById(R.id.hrView);
+        m = findViewById(R.id.mnView);
+        usedTime = findViewById(R.id.usedTimeView);
+        usedTime.setText((int)(timeOnPhone-0)/3600 + " hrs "
+                + (int)(timeOnPhone-0)/60 + " mins "
+                + (int)(timeOnPhone-0)%60 + "s used");
+        timeOnPhone /= 60;
+        if (limit != 0) { // checks if timer exists
+            Log.e("Progressbar","Day Limit:"+limit);
+            Log.e("ProgressBar", "Timeonphone"+timeOnPhone);
+            double newPerc = 100 - (timeOnPhone / (double)limit * 100);
             percent.setText(String.format("%.2f",newPerc)+"%");//sets % test
-            progressBar.setProgress((int) (100 - (Logic.getTimeOnPhone() /(double) getDayLimit() * 100)));// sets bar
-            int hour = (int) (getDayLimit() - Logic.getTimeOnPhone()) / 60;
-            int minute = (int) (getDayLimit() - Logic.getTimeOnPhone()) % 60;
-            h = findViewById(R.id.hrView);
+            progressBar.setProgress((int) (100 - (timeOnPhone /(double) limit * 100)));// sets bar
+            int hour = (int) (limit - timeOnPhone) / 60;
+            int minute = (int) (limit - timeOnPhone) % 60;
             h.setText(hour + "");
-            m = findViewById(R.id.mnView);
             m.setText(minute + "");
-        } else {
-            h = findViewById(R.id.hrView);
+        }
+        else {
             h.setText(0 + "");
-            m = findViewById(R.id.mnView);
             m.setText(0 + "");
             percent.setText("No limit has been set");
         }
@@ -83,21 +80,26 @@ public class MainActivity extends Logic {
         startService(serviceIntent);
         bindService(serviceIntent,sConnection, Context.BIND_AUTO_CREATE);
     }
+
+    public String getPassword(){
+        return settingSharedPreference.getString("pass","");
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(curTimeReciever, new IntentFilter("TIMER"));
-        retrievesSettings();
+        settingSharedPreference = getSharedPreferences("setting",Context.MODE_PRIVATE);
         initService();
-        retrievesPassword();
         setContentView(R.layout.activity_main);
-        if(Logic.getPassword().equals("")){//if password isnt present, prompt user to set one
+        if(getPassword().equals("")){//if password isnt present, prompt user to set one
             startActivity(new Intent(getApplicationContext(), ChangePassword.class));
         }
         findViewById(R.id.toLog).setOnClickListener(new View.OnClickListener() {// log button
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(getApplicationContext(), log.class));
+                Intent in = new Intent(getApplicationContext(),log.class);
+                in.putExtra("log",settingSharedPreference.getString("log",""));
+                startActivity(in);
             }
         });
         findViewById(R.id.toWeek).setOnClickListener(new View.OnClickListener() {// Your Week button
@@ -129,17 +131,15 @@ public class MainActivity extends Logic {
             }
         });
     }
+
     public void onResume(){
         super.onResume();
-        retrievesSettings();
-        setProgressBar();
     }
     @Override
     public void onDestroy(){
         super.onDestroy();
         if(isBinded) {
             unbindService(sConnection);
-            boundS.setMaxTime();
             isBinded = false;
         }
     }
