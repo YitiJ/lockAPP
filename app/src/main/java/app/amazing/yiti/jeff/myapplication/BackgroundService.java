@@ -6,12 +6,18 @@ package app.amazing.yiti.jeff.myapplication;
         import android.util.Log;
         import android.widget.Toast;
         import android.os.Handler;
+
+        import java.text.DateFormat;
         import java.util.Calendar;
+        import java.util.Date;
 
 public class BackgroundService extends Service {
+    private boolean isDestroy;
     private long startTime;
     private long storedTime;
-    private boolean isStop = false;
+    private long totalTime;
+    private boolean isStop = true;
+    private boolean isWarned = false;
     private long timeLimit;
     private int curDay;
     private SharedPreferences thisSharedPref;
@@ -19,6 +25,7 @@ public class BackgroundService extends Service {
     public static final String STORED_TIME_KEY = "STORED_TIME";
     public static final String STOP_KEY = "STOP_SIGNAL";
     public static final String CUR_DAY_KEY = "CUR_DAY";
+    public static final String WARNED_KEY = "IS_WARNED";
     private MyBinder binder = new MyBinder();
     private BroadcastReceiver limitReciever = new BroadcastReceiver(){
         @Override
@@ -66,23 +73,35 @@ public class BackgroundService extends Service {
     public void onCreate(){
         Log.e("thread","create()");
         thisSharedPref = getSharedPreferences(DOMAIN, Context.MODE_PRIVATE);
-        isStop = thisSharedPref.getBoolean(STOP_KEY,false);
+        isStop = thisSharedPref.getBoolean(STOP_KEY,true);
+        isWarned = thisSharedPref.getBoolean(WARNED_KEY,false);
         storedTime = thisSharedPref.getLong(STORED_TIME_KEY,-1);
         curDay = thisSharedPref.getInt(CUR_DAY_KEY,0);
         setTimeLimit(getLimit(curDay));
         Log.e("CurrentDay", Long.toString(curDay));
+        isDestroy = true;
+        runCheckDay();
         runTimer();
+    }
+    public void runCheckDay(){
+        Thread thread = new Thread(new Runnable(){
+            @Override
+            public void run(){
+               while(isDestroy) {
+                   updateCurDay();
+               }
+            }
+        });
+        thread.start();
     }
     public void runTimer(){
         Thread thread = new Thread(new Runnable(){
             @Override
             public void run(){
                 resetStartTimer();
-                long totalTime = 0;
+                totalTime = 0;
                 setTimeLimit(getLimit(curDay));
                 while(!isStop){
-                    Log.e("Run", "Runing thread");
-                    updateCurDay();
                     try {
                         if(checkDisplay()){
                             totalTime = storedTime + getLapseTime();
@@ -94,6 +113,7 @@ public class BackgroundService extends Service {
                         }
                         thisSharedPref.edit().putLong(STORED_TIME_KEY,totalTime).apply();
                         checkTimeLimit(totalTime);
+                        if(timeLimit == 0) setStop(true);
                         Thread.sleep(1000);
                     }catch(InterruptedException e){
                         e.printStackTrace();
@@ -132,10 +152,40 @@ public class BackgroundService extends Service {
         if(newDay != curDay){
             Log.e("curDay",Integer.toString(curDay));
             Log.e("newDay",Integer.toString(newDay));
+            SharedPreferences settingSharedPreference = getSharedPreferences("setting",Context.MODE_PRIVATE);
+            String newText = settingSharedPreference.getString("log","");
+            switch (curDay){
+                case 0:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Monday ";
+                    break;
+                case 1:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Tuesday ";
+                    break;
+                case 2:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Wednesday ";
+                    break;
+                case 3:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Thursday ";
+                    break;
+                case 4:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Friday ";
+                    break;
+                case 5:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Saturday ";
+                    break;
+                case 6:
+                    newText += DateFormat.getDateTimeInstance().format(new Date())+"- Sunday ";
+                    break;
+            }
+            Log.e("CurTimeChange", totalTime+"");
+            newText += "Remain Time: " + (timeLimit -totalTime/60 - 1) + "minutes\n";
+            settingSharedPreference.edit().putString("log",newText).apply();
             resetTimer();
             curDay = newDay;
             setTimeLimit(getLimit(curDay));
             thisSharedPref.edit().putInt(CUR_DAY_KEY,curDay).apply();
+            isWarned = false;
+            thisSharedPref.edit().putBoolean(WARNED_KEY,isWarned).apply();
         }
     }
     public long getCurLimit(){
@@ -152,6 +202,7 @@ public class BackgroundService extends Service {
     public void onDestroy(){
         Log.e("service","Destroy!!");
         setStop(true);
+       isDestroy = false;
     }
     public boolean checkDisplay(){
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
@@ -187,16 +238,18 @@ public class BackgroundService extends Service {
         }
     }
     public void timeLimitReached(){
-        setStop(true);
-        Handler h = new Handler(getApplicationContext().getMainLooper());
-        // Although you need to pass an appropriate context
-        h.post(new Runnable() {
-            @Override
-            public void run() {
-                startActivity(new Intent(getApplicationContext(), LockScreen.class));
-                Toast.makeText(getApplicationContext(),"Your time limit is reached!!",Toast.LENGTH_SHORT).show();
-            }
-        });
+        if(!isWarned) {
+            isWarned = true;
+            thisSharedPref.edit().putBoolean(WARNED_KEY,isWarned).apply();
+            Handler h = new Handler(getApplicationContext().getMainLooper());
+            // Although you need to pass an appropriate context
+            h.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), "Your time limit is reached!!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
     class MyBinder extends Binder{
         BackgroundService getService() {

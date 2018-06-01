@@ -9,11 +9,13 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import java.text.DateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 public class Time_Input extends AppCompatActivity {
@@ -69,7 +71,31 @@ public class Time_Input extends AppCompatActivity {
 
                 int sum = Integer.parseInt(hour.getText().toString()) * 60//hours
                         + Integer.parseInt(minute.getText().toString());//minutes
-
+                int mode = getIntent().getIntExtra("day",0);
+                int curDay = 0;
+                switch (new java.util.GregorianCalendar().get(Calendar.DAY_OF_WEEK)) {
+                    case Calendar.MONDAY:
+                        curDay = 0;
+                        break;
+                    case Calendar.TUESDAY:
+                        curDay = 1;
+                        break;
+                    case Calendar.WEDNESDAY:
+                        curDay = 2;
+                        break;
+                    case Calendar.THURSDAY:
+                        curDay = 3;
+                        break;
+                    case Calendar.FRIDAY:
+                        curDay = 4;
+                        break;
+                    case Calendar.SATURDAY:
+                        curDay = 5;
+                        break;
+                    case Calendar.SUNDAY:
+                        curDay = 6;
+                        break;
+                }
                 if((h>23 || h<0) && (m>60 || m<0))
                     Toast.makeText(getBaseContext(),"Incompatible input : Hours should be between 0 and 23 and Minutes should be between 0 and 60 ",Toast.LENGTH_LONG).show();
 
@@ -79,11 +105,11 @@ public class Time_Input extends AppCompatActivity {
                 else if(m>60 || m<0)
                     Toast.makeText(getBaseContext(), "Incompatible input : Minutes should be between 0 and 60", Toast.LENGTH_SHORT).show();
 
-                else if(sum<timerSharedPreference.getLong(BackgroundService.STORED_TIME_KEY,0)/60)
+                else if(curDay == mode
+                        && sum<timerSharedPreference.getLong(BackgroundService.STORED_TIME_KEY,0)/60) {
                     Toast.makeText(getBaseContext(), "Incompatible input : Time limit should be greater than time already spent on the phone", Toast.LENGTH_SHORT).show();
-
+                }
                 else {
-                    int mode = getIntent().getIntExtra("day",0);
                     String newText = getNewLog(mode,settingSharedPreference.getString("log",""));//updates log
                     settingSharedPreference.edit().putString("log",newText).apply();
                     settingSharedPreference.edit().putString("place"+mode,h+" hours : "+m+" minutes").apply();// for setting the value of current limits
@@ -104,25 +130,25 @@ public class Time_Input extends AppCompatActivity {
         String text = "";
         switch (i){
             case 0:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Monday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Monday Limit Changed \n";
                 break;
             case 1:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Tuesday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Tuesday Limit Changed \n";
                 break;
             case 2:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Wednesday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Wednesday Limit Changed \n";
                 break;
             case 3:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Thursday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Thursday Limit Changed \n";
                 break;
             case 4:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Friday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Friday Limit Changed \n";
                 break;
             case 5:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Saturday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Saturday Limit Changed \n";
                 break;
             case 6:
-                text = DateFormat.getDateTimeInstance().format(new Date())+" - Sunday Limit Changed \n";
+                text = DateFormat.getDateTimeInstance().format(new Date())+"- Sunday Limit Changed \n";
                 break;
         }
         return oldText+text;

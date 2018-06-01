@@ -27,7 +27,6 @@
             android:exported="true" />
 
         <activity android:name=".log" />
-        <activity android:name=".LockScreen"></activity>
     </application>
 
 </manifest>
