@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
             BackgroundService.MyBinder myBinder = (BackgroundService.MyBinder) service;
             boundS = myBinder.getService();
             isBinded = true;
-            setProgressBar(boundS.getCurLimit(),boundS.getTimeOnPhone());
+            setProgressBar(boundS.getTimeOnPhone(),boundS.getCurLimit());
         }
     };
     private BroadcastReceiver curTimeReciever = new BroadcastReceiver(){
@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent){
             long time = intent.getLongExtra("TIME",0);
             if(boundS!=null) {
-                setProgressBar(time/60,boundS.getCurLimit());
+                setProgressBar(time,boundS.getCurLimit());
             }
         }
     };
@@ -48,8 +48,15 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         TextView h;
         TextView m;
-
-        if (boundS!=null && boundS.getCurLimit() != 0) { // checks if timer exists
+        TextView usedTime;
+        h = findViewById(R.id.hrView);
+        m = findViewById(R.id.mnView);
+        usedTime = findViewById(R.id.usedTimeView);
+        usedTime.setText((int)(timeOnPhone-0)/3600 + " hrs "
+                + (int)(timeOnPhone-0)/60 + " mins "
+                + (int)(timeOnPhone-0)%60 + "s used");
+        timeOnPhone /= 60;
+        if (limit != 0) { // checks if timer exists
             Log.e("Progressbar","Day Limit:"+limit);
             Log.e("ProgressBar", "Timeonphone"+timeOnPhone);
             double newPerc = 100 - (timeOnPhone / (double)limit * 100);
@@ -57,15 +64,11 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setProgress((int) (100 - (timeOnPhone /(double) limit * 100)));// sets bar
             int hour = (int) (limit - timeOnPhone) / 60;
             int minute = (int) (limit - timeOnPhone) % 60;
-            h = findViewById(R.id.hrView);
             h.setText(hour + "");
-            m = findViewById(R.id.mnView);
             m.setText(minute + "");
         }
         else {
-            h = findViewById(R.id.hrView);
             h.setText(0 + "");
-            m = findViewById(R.id.mnView);
             m.setText(0 + "");
             percent.setText("No limit has been set");
         }
@@ -96,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Intent in = new Intent(getApplicationContext(),log.class);
                 in.putExtra("log",settingSharedPreference.getString("log",""));
-                startActivity(new Intent(getApplicationContext(), log.class));
+                startActivity(in);
             }
         });
         findViewById(R.id.toWeek).setOnClickListener(new View.OnClickListener() {// Your Week button
