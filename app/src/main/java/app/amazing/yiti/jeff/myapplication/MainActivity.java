@@ -9,6 +9,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
 public class MainActivity extends AppCompatActivity {
@@ -51,10 +52,16 @@ public class MainActivity extends AppCompatActivity {
         TextView usedTime;
         h = findViewById(R.id.hrView);
         m = findViewById(R.id.mnView);
-        usedTime = findViewById(R.id.usedTimeView);
-        usedTime.setText((int)(timeOnPhone-0)/3600 + " hrs "
-                + (int)(timeOnPhone-0)/60 + " mins "
-                + (int)(timeOnPhone-0)%60 + "s used");
+        {
+            usedTime = findViewById(R.id.usedTimeView);
+            long time = timeOnPhone;
+            int hrs =(int) time/3600;
+            time = time%3600;
+            int min = (int) time/60;
+            time = time%60;
+            usedTime.setText(hrs + " hrs " + min + " mins "
+                    + time + "s used");
+        }
         timeOnPhone /= 60;
         if (limit != 0) { // checks if timer exists
             Log.e("Progressbar","Day Limit:"+limit);
@@ -91,6 +98,14 @@ public class MainActivity extends AppCompatActivity {
         settingSharedPreference = getSharedPreferences("setting",Context.MODE_PRIVATE);
         initService();
         setContentView(R.layout.activity_main);
+        {
+            SharedPreferences serviceSharedPreference = getSharedPreferences(BackgroundService.DOMAIN, Context.MODE_PRIVATE);
+            Button btn = findViewById(R.id.stopBtn);
+            if (serviceSharedPreference.getBoolean(BackgroundService.STOP_KEY, false))
+                btn.setText("Start Timer");
+            else
+                btn.setText("Stop Timer");
+        }
         if(getPassword().equals("")){//if password isnt present, prompt user to set one
             startActivity(new Intent(getApplicationContext(), ChangePassword.class));
         }
@@ -144,4 +159,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void onStopStartPressed(View v) {
+        AlertDialog.Builder ad = new AlertDialog.Builder(MainActivity.this);
+        ad.setTitle("Enter Password (case sensitive)");
+        final EditText et = new EditText(MainActivity.this);
+
+        ad.setView(et);
+        ad.setPositiveButton("Enter", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface arg0, int arg1) {
+                if (et.getText().toString().equals(getPassword())) {
+                    SharedPreferences serviceSharedPreference = getSharedPreferences(BackgroundService.DOMAIN, Context.MODE_PRIVATE);
+                    Button btn = findViewById(R.id.stopBtn);
+                    if (serviceSharedPreference.getBoolean(BackgroundService.STOP_KEY, false)) {
+                        boundS.setStop(false);
+                        btn.setText("Stop Timer");
+                    } else {
+                        boundS.setStop(true);
+                        btn.setText("Start Timer");
+                    }
+                } else {
+                    Toast.makeText(getBaseContext(), "Wrong password!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        ad.create().show();
+
+    }
 }

@@ -72,7 +72,7 @@ public class BackgroundService extends Service {
     @Override
     public void onCreate(){
         Log.e("thread","create()");
-        thisSharedPref = getSharedPreferences(DOMAIN, Context.MODE_PRIVATE);
+        thisSharedPref = getSharedPreferences(BackgroundService.DOMAIN, Context.MODE_PRIVATE);
         isStop = thisSharedPref.getBoolean(STOP_KEY,true);
         isWarned = thisSharedPref.getBoolean(WARNED_KEY,false);
         storedTime = thisSharedPref.getLong(STORED_TIME_KEY,-1);
@@ -113,7 +113,6 @@ public class BackgroundService extends Service {
                         }
                         thisSharedPref.edit().putLong(STORED_TIME_KEY,totalTime).apply();
                         checkTimeLimit(totalTime);
-                        if(timeLimit == 0) setStop(true);
                         Thread.sleep(1000);
                     }catch(InterruptedException e){
                         e.printStackTrace();
